@@ -1,0 +1,22 @@
+# Build artifacts
+*.o
+conv/conv2d
+conv/conv_filter
+
+# Python
+__pycache__/
+*.pyc
+
+# Manim renders (regenerable via `make anim*`)
+**/media/
+
+# Video pipeline intermediates (regenerable via `make short|long`)
+**/video/work/
+
+# Generated audio (a small mp3 placeholder is committed instead)
+**/video/music/*.wav
+
+# Local Claude settings / OS cruft
+.claude/
+.DS_Store
+.venv/
