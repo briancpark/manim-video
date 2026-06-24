@@ -2,6 +2,7 @@
 *.o
 conv/conv2d
 conv/conv_filter
+gemm/gemm
 
 # Python
 __pycache__/

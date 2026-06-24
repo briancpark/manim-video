@@ -26,6 +26,19 @@ make long               # long-form explainer (narrated)
 See [`conv/video/README.md`](conv/video/README.md) for the video pipeline
 (TTS engines, music, sync).
 
+### `gemm/` — single-precision matrix multiply, 40× with NEON
+`C = A*B` from a naive triple loop → cache-blocked (tiling + ikj order) → a
+hand-written NEON 8×8 register microkernel. Bit-exact; ~40× over naive at 1024³
+(~64 GFLOP/s single core), benchmarked against Apple's Accelerate BLAS (which
+uses the AMX matrix coprocessor — a different league).
+
+```bash
+cd gemm
+make && make run        # build + benchmark (naive / blocked / neon / BLAS)
+./gemm 2048 2048 2048    # custom sizes
+make anim               # Tiling, Microkernel, Roofline animations
+```
+
 ## Requirements
 - Apple Silicon + clang (for the NEON C code)
 - ffmpeg
