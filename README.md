@@ -40,6 +40,19 @@ make anim               # Tiling, Microkernel, TensorCore, Roofline animations
 make long               # narrated explainer (incl. NVIDIA Tensor Cores)
 ```
 
+### `convzoo/` — The Convolution Zoo (flagship explainer)
+Every convolution variant (1D/2D/3D, pointwise, grouped, depthwise, separable,
+dilated, transposed), how they all collapse to **GEMM**, how that runs on
+**NEON / Arm SME / NVIDIA Tensor Cores**, and why that's what powers GenAI
+(diffusion U-Nets & VAEs, DiT patchify, video 3D convs, audio 1D convs, Mamba).
+Built on `director.md` (cold-open payoff, open loops, setback-before-reveal).
+
+```bash
+cd convzoo
+make anim               # render all 10 scenes
+make long               # narrated explainer (~8–10 min)
+```
+
 ## Shared video pipeline (`pipeline/`)
 `pipeline/build.py <topic> <short|long> [kokoro|say]` turns any topic's Manim
 scenes into a narrated video: render → on-device TTS → sync each clip → concat →
