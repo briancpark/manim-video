@@ -36,8 +36,16 @@ uses the AMX matrix coprocessor — a different league).
 cd gemm
 make && make run        # build + benchmark (naive / blocked / neon / BLAS)
 ./gemm 2048 2048 2048    # custom sizes
-make anim               # Tiling, Microkernel, Roofline animations
+make anim               # Tiling, Microkernel, TensorCore, Roofline animations
+make long               # narrated explainer (incl. NVIDIA Tensor Cores)
 ```
+
+## Shared video pipeline (`pipeline/`)
+`pipeline/build.py <topic> <short|long> [kokoro|say]` turns any topic's Manim
+scenes into a narrated video: render → on-device TTS → sync each clip → concat →
+duck music under the voice. Each topic supplies `<topic>/video/narration.py`
+(a `LONG` list, optional `SHORT`) and an optional track in `<topic>/video/music/`.
+`pipeline/tts.py` provides Kokoro (neural, isolated `mlx-tts` env) and macOS `say`.
 
 ## Requirements
 - Apple Silicon + clang (for the NEON C code)

@@ -17,6 +17,9 @@ __pycache__/
 # Generated audio (a small mp3 placeholder is committed instead)
 **/video/music/*.wav
 
+# Scratch renders at a topic root (canonical output lives in <topic>/video/out/)
+gemm/final*.mp4
+
 # Local Claude settings / OS cruft
 .claude/
 .DS_Store

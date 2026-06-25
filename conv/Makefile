@@ -44,9 +44,9 @@ anim-channels:
 # Narrated videos with on-device TTS + ducked music. VOICE=kokoro|say
 VOICE ?= kokoro
 short:
-	/opt/homebrew/bin/python3 video/build.py short $(VOICE)
+	/opt/homebrew/bin/python3 ../pipeline/build.py conv short $(VOICE)
 long:
-	/opt/homebrew/bin/python3 video/build.py long $(VOICE)
+	/opt/homebrew/bin/python3 ../pipeline/build.py conv long $(VOICE)
 
 clean:
 	rm -f conv2d conv_filter $(COMMON) main.o filter.o sweep.csv *.png /tmp/conv_*.bin

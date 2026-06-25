@@ -13,10 +13,10 @@ make short          # vertical short  (Kokoro voice)
 make long           # long explainer  (Kokoro voice)
 make short VOICE=say   # use macOS `say` instead (no env needed)
 ```
-Or directly:
+Or directly (shared builder lives at the repo root):
 ```bash
-python3 video/build.py short kokoro
-python3 video/build.py long  say
+python3 ../pipeline/build.py conv short kokoro
+python3 ../pipeline/build.py conv long  say
 ```
 
 ## TTS engines (on-device)

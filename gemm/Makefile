@@ -23,7 +23,12 @@ anim:
 	$(MANIM) $(MANIM_Q) --format mp4 gemm_anim.py Microkernel
 	$(MANIM) $(MANIM_Q) --format mp4 gemm_anim.py Roofline
 
+# Narrated video (shared pipeline). VOICE=kokoro|say
+VOICE ?= kokoro
+long:
+	/opt/homebrew/bin/python3 ../pipeline/build.py gemm long $(VOICE)
+
 clean:
 	rm -f gemm $(OBJ)
 
-.PHONY: run anim clean
+.PHONY: run anim long clean
