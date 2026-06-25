@@ -21,7 +21,18 @@ SHORT = {
         "Same math, bit for bit identical, but fourteen times faster on Apple Silicon. "
         "That's NEON SIMD."
     ),
+    "music": {"track": "01", "intensity": "hero", "offset": 0},   # Arrow (theme)
 }
+
+# Per-scene music score, parallel to LONG (see director.md).
+MUSIC = [
+    {"track": "10", "intensity": "bed",    "offset": 0},   # NaiveConv       - Cereal Killa
+    {"track": "13", "intensity": "climax", "offset": 16},  # NeonConv        - Keep On Trying
+    {"track": "09", "intensity": "build",  "offset": 4},   # Im2Col          - Pokemon in NYC
+    {"track": "02", "intensity": "climax", "offset": 12},  # Im2ColGEMM      - Run (Part 2)
+    {"track": "08", "intensity": "bed",    "offset": 0},   # ChannelReduce   - Dive
+    {"track": "01", "intensity": "hero",   "offset": 0},   # ChannelParallel - Arrow (theme)
+]
 
 LONG = [
     {

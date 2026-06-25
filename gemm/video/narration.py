@@ -1,5 +1,16 @@
 """Narration for the GEMM explainer: cache blocking -> NEON microkernel ->
-NVIDIA tensor cores -> roofline. Consumed by ../../pipeline/build.py."""
+NVIDIA tensor cores -> roofline. Consumed by ../../pipeline/build.py.
+
+MUSIC is the per-scene score (see director.md). track = number in music/,
+intensity in {bed, build, climax, hero}, offset = seconds into the track."""
+
+# Parallel to LONG, scene-for-scene.
+MUSIC = [
+    {"track": "03", "intensity": "bed",    "offset": 0},   # Tiling      - New Shoes
+    {"track": "13", "intensity": "climax", "offset": 16},  # Microkernel - Keep On Trying
+    {"track": "02", "intensity": "hero",   "offset": 12},  # TensorCore  - Run (Part 2)
+    {"track": "01", "intensity": "hero",   "offset": 0},   # Roofline    - Arrow (theme)
+]
 
 LONG = [
     {

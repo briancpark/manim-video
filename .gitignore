@@ -20,6 +20,9 @@ __pycache__/
 # Scratch renders at a topic root (canonical output lives in <topic>/video/out/)
 gemm/final*.mp4
 
+# Downloaded music library (no-copyright, but not redistributed via git)
+/music/
+
 # Local Claude settings / OS cruft
 .claude/
 .DS_Store

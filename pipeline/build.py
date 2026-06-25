@@ -28,6 +28,11 @@ REPO = os.path.dirname(PIPE)
 MANIM = "/Users/briancpark/miniforge3/envs/manim-ce/bin/manim"
 QDIR = {"-ql": "480p15", "-qm": "720p30", "-qh": "1080p60", "-qk": "2160p60"}
 
+# Scored music (see director.md). Pre-duck volume per intensity; climax/hero
+# also swell UP into the beat. Library = repo-root music/ (git-ignored).
+MUSIC_LIB = os.path.join(REPO, "music")
+INTENSITY = {"bed": 0.11, "build": 0.16, "climax": 0.24, "hero": 0.30}
+
 sys.path.insert(0, PIPE)
 from tts import synth
 
@@ -85,7 +90,8 @@ class Topic:
 
 
 def scene_clip(video, wav, dst, fps=30, w=None, h=None):
-    """Normalized clip: video frozen to max(video,narration), audio padded."""
+    """Normalized clip: video frozen to max(video,narration), audio padded.
+    Returns the clip duration T so the music score can be aligned to it."""
     vdur, adur = probe_dur(video), probe_dur(wav)
     T = max(vdur, adur) + 0.4
     pad = max(0.0, T - vdur)
@@ -96,6 +102,54 @@ def scene_clip(video, wav, dst, fps=30, w=None, h=None):
         "-filter_complex", f"{vf};{af}", "-map", "[v]", "-map", "[a]",
         "-t", f"{T:.3f}", "-c:v", "libx264", "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-ar", "48000", "-ac", "2", dst])
+    return T
+
+
+def resolve_track(num):
+    """'01' -> path of the matching mp3 in the music library."""
+    for pat in (f"{num} - *.mp3", f"{num} -*.mp3", f"{num}*.mp3"):
+        hits = sorted(glob.glob(os.path.join(MUSIC_LIB, pat)))
+        if hits:
+            return hits[0]
+    return None
+
+
+def music_segment(track, T, intensity, offset, dst):
+    """One scene's music: loop track, seek to a good part, set volume, and
+    fade in (swell for climax/hero) + fade out, trimmed to exactly T."""
+    vol = INTENSITY.get(intensity, 0.14)
+    fin = 1.8 if intensity in ("climax", "hero") else 0.8
+    fout = 0.9
+    st_out = max(0.0, T - fout)
+    af = (f"volume={vol},afade=t=in:st=0:d={fin},"
+          f"afade=t=out:st={st_out:.3f}:d={fout}")
+    sh(["ffmpeg", "-y", "-loglevel", "error", "-stream_loop", "-1",
+        "-i", track, "-ss", str(offset), "-t", f"{T:.3f}", "-af", af,
+        "-ar", "48000", "-ac", "2", dst])
+
+
+def compose_music(durations, score, workdir):
+    """Build a full-length scored music bed: one segment per scene, concatenated
+    so its length matches the body video exactly. Returns the wav (or None)."""
+    segs = []
+    for i, (T, cue) in enumerate(zip(durations, score)):
+        track = resolve_track(str(cue["track"]))
+        if not track:
+            print(f"    [music] track {cue['track']!r} not found; skipping scene {i}")
+            return None
+        seg = os.path.join(workdir, f"mus_{i:02d}.wav")
+        music_segment(track, T, cue.get("intensity", "bed"), cue.get("offset", 0), seg)
+        print(f"    [music] scene {i}: {os.path.basename(track)} ({cue.get('intensity','bed')})")
+        segs.append(seg)
+    out = os.path.join(workdir, "music_track.wav")
+    lst = os.path.join(workdir, "music_list.txt")
+    with open(lst, "w") as f:
+        for s in segs:
+            f.write(f"file '{os.path.abspath(s)}'\n")
+    sh(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
+        "-i", lst, "-ar", "48000", "-ac", "2", out])   # re-encode -> valid wav
+    os.remove(lst)
+    return out
 
 
 def concat(clips, dst, workdir):
@@ -107,23 +161,37 @@ def concat(clips, dst, workdir):
         "-i", lst, "-c", "copy", dst])
 
 
-def add_music(video, music, dst, vol=0.16):
+def mix_music(video, music, dst, prevol=None, loop=False):
+    """Mix a music bed under the video's voice with sidechain ducking. The music
+    sits low while the voice talks and rises in the gaps (the Rober breath).
+    prevol applies a flat gain (for an un-scored single track); a composed score
+    already has per-scene volumes baked in, so pass prevol=None there."""
     total = probe_dur(video)
-    fc = (f"[1:a]volume={vol}[m];"
-          f"[m][0:a]sidechaincompress=threshold=0.02:ratio=6:attack=20:release=400[md];"
+    pre = f"volume={prevol}," if prevol else ""
+    fc = (f"[1:a]{pre}aresample=48000[m];"
+          f"[m][0:a]sidechaincompress=threshold=0.03:ratio=4:attack=20:release=350[md];"
           f"[0:a][md]amix=inputs=2:duration=first:normalize=0[a]")
-    sh(["ffmpeg", "-y", "-loglevel", "error", "-i", video,
-        "-stream_loop", "-1", "-i", music, "-filter_complex", fc,
-        "-map", "0:v", "-map", "[a]", "-t", f"{total:.3f}",
+    inp = (["-stream_loop", "-1", "-i", music] if loop else ["-i", music])
+    sh(["ffmpeg", "-y", "-loglevel", "error", "-i", video, *inp,
+        "-filter_complex", fc, "-map", "0:v", "-map", "[a]", "-t", f"{total:.3f}",
         "-c:v", "copy", "-c:a", "aac", "-ar", "48000", "-ac", "2", dst])
 
 
-def finalize(body, t, name):
-    music = t.find_music()
+def finalize(body, t, name, durations, score):
+    """Score the music (if the topic defines one), else fall back to a single
+    looped track in <topic>/video/music/, else voice-only."""
     final = os.path.join(t.out, name)
+    if score:
+        print("  composing scored music ...")
+        track = compose_music(durations, score, t.work)
+        if track:
+            mix_music(body, track, final, prevol=None, loop=False)
+            print(f"DONE -> {final}  ({probe_dur(final):.1f}s)")
+            return
+    music = t.find_music()
     if music:
-        print(f"  music: {os.path.basename(music)} (ducked)")
-        add_music(body, music, final)
+        print(f"  music: {os.path.basename(music)} (single, ducked)")
+        mix_music(body, music, final, prevol=0.16, loop=True)
     else:
         print("  no music found -> voice only")
         os.replace(body, final)
@@ -139,12 +207,14 @@ def build_short(t, engine):
     print(f"  TTS ({engine}) ...")
     synth(t.N.SHORT["text"], wav, engine=engine)
     clip = os.path.join(t.work, "short_clip.mp4")
-    scene_clip(video, wav, clip, fps=30)
-    finalize(clip, t, "short_final.mp4")
+    T = scene_clip(video, wav, clip, fps=30)
+    score = [t.N.SHORT["music"]] if "music" in t.N.SHORT else None
+    finalize(clip, t, "short_final.mp4", [T], score)
 
 
 def build_long(t, engine):
-    clips = []
+    clips, durations = [], []
+    score = getattr(t.N, "MUSIC", None)
     for i, beat in enumerate(t.N.LONG):
         mod, cls = beat["scene"]
         print(f"[{i+1}/{len(t.N.LONG)}] {cls}")
@@ -153,11 +223,11 @@ def build_long(t, engine):
         print(f"  TTS ({engine}) ...")
         synth(beat["text"], wav, engine=engine)
         clip = os.path.join(t.work, f"long_{i:02d}.mp4")
-        scene_clip(video, wav, clip, fps=30, w=1920, h=1080)
+        durations.append(scene_clip(video, wav, clip, fps=30, w=1920, h=1080))
         clips.append(clip)
     body = os.path.join(t.work, "long_body.mp4")
     concat(clips, body, t.work)
-    finalize(body, t, "long_final.mp4")
+    finalize(body, t, "long_final.mp4", durations, score)
 
 
 if __name__ == "__main__":
