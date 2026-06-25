@@ -70,16 +70,29 @@ class Topic:
         os.makedirs(self.work, exist_ok=True)
 
     def find_or_render(self, module, cls, quality="-qh"):
-        qd = QDIR.get(quality, "1080p60")
-        target = os.path.join(self.root, "media", "videos", module, qd, cls + ".mp4")
+        # Manim names the output dir by frame HEIGHT, so a portrait/vertical scene
+        # (e.g. 1080x1920 Shorts) lands in 1920p60, not 1080p60. Match by fps so
+        # we reuse any render at the requested quality, whatever its orientation.
+        base = os.path.join(self.root, "media", "videos", module)
+        target = os.path.join(base, QDIR.get(quality, "1080p60"), cls + ".mp4")
         if os.path.exists(target):
             return target
-        print(f"  rendering {module}.{cls} @ {qd} ...")
+        fps_tok = {"-ql": "p15", "-qm": "p30", "-qh": "p60", "-qk": "p60"}[quality]
+
+        def at_fps():
+            return [h for h in glob.glob(os.path.join(base, "*", cls + ".mp4"))
+                    if os.path.basename(os.path.dirname(h)).endswith(fps_tok)]
+
+        hits = at_fps()
+        if hits:
+            return max(hits, key=os.path.getmtime)
+        print(f"  rendering {module}.{cls} @ {quality} ...")
         sh([MANIM, quality, "--format", "mp4",
             os.path.join(self.root, module + ".py"), cls], cwd=self.root)
-        if not os.path.exists(target):
-            raise RuntimeError(f"render produced no file at {target}")
-        return target
+        hits = at_fps()
+        if not hits:
+            raise RuntimeError(f"render produced no {cls} at fps {fps_tok} under {base}")
+        return max(hits, key=os.path.getmtime)
 
     def find_music(self):
         for ext in ("mp3", "m4a", "wav", "flac", "aac", "ogg"):
